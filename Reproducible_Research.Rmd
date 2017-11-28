@@ -3,8 +3,8 @@ title: "Reproducible_Research"
 author: "Chuanneng Sun"
 date: "November 28, 2017"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -66,14 +66,15 @@ missing_data %>%
     print
 ```
 Huh!, so data of these days are really missing.
-I tend to omit these missing values.
+Use mean value of the dataset to impute the missing values.
 ```{r}
-good_data <- data[complete.cases(data$steps), ]
+data[!complete.cases(data$steps), 1] <- mean(data[complete.cases(data$steps), ]$steps)
+head(data)
 ```
 
 ### So lets plot the total number of steps
 ```{r}
-good_data %>%
+data %>%
     group_by(date) %>%
     summarise(sum=sum(steps)) %>%
     ggplot(aes(x=date, y=sum)) + geom_bar(stat = "identity") +
@@ -82,27 +83,27 @@ good_data %>%
 
 ### Finally, we should compare number of steps in weekdays with weekends
 ```{r}
-good_data$date <- as.Date(as.character(good_data$date))
-good_data$weekday <- weekdays(good_data$date)
-head(good_data)
+data$date <- as.Date(as.character(data$date))
+data$weekday <- weekdays(data$date)
+head(data)
 ```
 So here we can see the weekdays of each day.
 ```{r}
-good_data %>%
+data %>%
     group_by(weekday) %>%
     summarise(avg=mean(steps)) %>%
     ggplot(aes(x=weekday, y=avg)) + geom_bar(stat='identity', aes(fill=weekday))
 ```
 To further explore the difference between weekdays and weekends, we classify the weekdays into 'weekday' and 'weekend'.
 ```{r}
-good_data$type <- 'NA'
-good_data[good_data$weekday %in% c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), ]$type <- 'weekday'
-good_data[good_data$weekday %in% c('Saturday', 'Sunday'), ]$type <- 'weekend'
-head(good_data)
+data$type <- 'NA'
+data[data$weekday %in% c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), ]$type <- 'weekday'
+data[data$weekday %in% c('Saturday', 'Sunday'), ]$type <- 'weekend'
+head(data)
 ```
 Let's plot it!!
 ```{r}
-good_data %>%
+data %>%
     group_by(type) %>%
     summarise(avg=mean(steps)) %>%
     ggplot(aes(x=type, y=avg, fill=type)) + geom_bar(stat='identity')
