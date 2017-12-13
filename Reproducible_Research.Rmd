@@ -3,12 +3,16 @@ title: "Reproducible_Research"
 author: "Chuanneng Sun"
 date: "November 28, 2017"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(lattice)
+library(dplyr)
+library(ggplot2)
+library(Hmisc)
 ```
 
 ### First, read the data
@@ -22,40 +26,48 @@ head(data)
 ```
 So there are a lot of missing values in "Step" attribute. So be careful when making plots.
 
-### Make some plots of the data
-```{r}
-library(lattice)
-library(dplyr)
-library(ggplot2)
-hist(data$steps, xlab = 'Steps', main = 'Frequency of Steps')
-```
-So we can see a basic distribution of steps.
 
-### Then we should calculate the mean and median number of steps
+### Total number of steps each day
 ```{r}
-data %>%
-summarise(mean=mean(steps, na.rm = T), median=median(steps, na.rm = T)) %>%
-print
+daySteps <- tapply(data$steps, data$date, sum, na.rm=TRUE)
+qplot(daySteps, xlab='Steps per day', ylab='Frequency')
 ```
-### Next, we ought to look at the time series of steps
+We can get a brief impression about the data.
+
+### Mean and median steps each day
 ```{r}
-group_data <- group_by(data, date)
-group_data <- summarise(group_data, mean=mean(steps))
-ggplot(data=group_data, aes(x=date, y=mean)) +
-    geom_line() + geom_point()
+dayStepsMean <- mean(daySteps)
+dayStepsMedian <- median(daySteps)
+print(c(dayStepsMean, dayStepsMedian))
+```
+So we can see clearly hear that the mean and median of the data is 9354.23 and 10395.00.
+
+
+### Average daily activity
+```{r}
+aggSteps <- aggregate(x=list(steps=data$steps),by=list(interval=data$interval), FUN=mean, na.rm=TRUE)
+head(aggSteps)
+```
+
+### Next, we ought to make a time series of steps using the processed data above
+```{r}
+ggplot(aggSteps, aes(interval, steps)) + geom_line()
 ```
 
 ### Next, let's find out which interval contains the most steps
 ```{r}
-data[which.max(data$steps), ]
+mostStep <- which.max(aggSteps$steps)
+mostInterval <- aggSteps[mostStep, 'interval']
+mostInterval
 ```
 
-So on 2012-11-27, steps come up to 806 within 5 minutes. Amazing!
+So on it is #835 interval which contains the most steps.
 
 ### Next let's find out a way to imput the missing data.
 ```{r}
 missing_data <- data[!complete.cases(data$steps), ]
-ggplot(data=missing_data, aes(x=date)) + stat_count(aes(fill = date))
+ggplot(data=missing_data, aes(x=date)) + stat_count(aes(fill = date)) +
+theme(axis.text.x = element_text(angle = 45))
 ```
 
 What's this? Seems that data of these days have been missing.
@@ -68,17 +80,14 @@ missing_data %>%
 Huh!, so data of these days are really missing.
 Use mean value of the dataset to impute the missing values.
 ```{r}
-data[!complete.cases(data$steps), 1] <- mean(data[complete.cases(data$steps), ]$steps)
+data$steps <- impute(data$steps, fun=mean)
 head(data)
 ```
 
-### So lets plot the total number of steps
+### Let's plot the imputed histogram of the data.
 ```{r}
-data %>%
-    group_by(date) %>%
-    summarise(sum=sum(steps)) %>%
-    ggplot(aes(x=date, y=sum)) + geom_bar(stat = "identity") +
-    theme(axis.text.x = element_text(angle = 90))
+dayStepsImp <- tapply(data$steps, data$date, sum)
+qplot(dayStepsImp)
 ```
 
 ### Finally, we should compare number of steps in weekdays with weekends
@@ -101,7 +110,8 @@ data[data$weekday %in% c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
 data[data$weekday %in% c('Saturday', 'Sunday'), ]$type <- 'weekend'
 head(data)
 ```
-Let's plot it!!
+
+
 ```{r}
 data %>%
     group_by(type) %>%
